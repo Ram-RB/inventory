@@ -1,8 +1,29 @@
 const crypto = require("crypto");
-const { sql } = require("@vercel/postgres");
+const postgres = require("postgres");
 
 const ADMIN_EMAIL = "admin@inventory.local";
 const ADMIN_PASSWORD = "admin123";
+let client;
+
+function getClient() {
+  if (!process.env.POSTGRES_URL) {
+    throw new Error("POSTGRES_URL env var was not found.");
+  }
+
+  if (!client) {
+    client = postgres(process.env.POSTGRES_URL, {
+      max: 1,
+      ssl: "require",
+    });
+  }
+
+  return client;
+}
+
+async function sql(strings, ...values) {
+  const rows = await getClient()(strings, ...values);
+  return { rows };
+}
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
   const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, "sha512").toString("hex");

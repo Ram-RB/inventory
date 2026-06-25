@@ -7,7 +7,7 @@
     "start": "vercel dev"
   },
   "dependencies": {
-    "@vercel/postgres": "^0.10.0"
+    "postgres": "^3.4.7"
   },
   "devDependencies": {
     "vercel": "^34.0.0"
