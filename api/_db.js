@@ -1,0 +1,105 @@
+const crypto = require("crypto");
+const { sql } = require("@vercel/postgres");
+
+const ADMIN_EMAIL = "admin@inventory.local";
+const ADMIN_PASSWORD = "admin123";
+
+function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
+  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, "sha512").toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedPassword) {
+  if (!storedPassword || !storedPassword.includes(":")) return false;
+  const [salt, expectedHash] = storedPassword.split(":");
+  const actualHash = hashPassword(password, salt).split(":")[1];
+  return crypto.timingSafeEqual(Buffer.from(actualHash, "hex"), Buffer.from(expectedHash, "hex"));
+}
+
+async function initDb() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user',
+      approved BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS inventory_items (
+      id TEXT PRIMARY KEY,
+      sku TEXT NOT NULL,
+      name TEXT NOT NULL,
+      quantity INTEGER NOT NULL,
+      photo TEXT NOT NULL,
+      location TEXT NOT NULL,
+      updated_by_id TEXT NOT NULL REFERENCES users(id),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS audit_entries (
+      id TEXT PRIMARY KEY,
+      action TEXT NOT NULL,
+      details TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      user_name TEXT NOT NULL,
+      timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+
+  const admin = await sql`SELECT id FROM users WHERE email = ${ADMIN_EMAIL} LIMIT 1`;
+  if (!admin.rows.length) {
+    await sql`
+      INSERT INTO users (id, name, email, password_hash, role, approved)
+      VALUES (${crypto.randomUUID()}, 'Admin User', ${ADMIN_EMAIL}, ${hashPassword(ADMIN_PASSWORD)}, 'admin', TRUE)
+    `;
+  }
+}
+
+async function addAudit(action, details, user) {
+  await sql`
+    INSERT INTO audit_entries (id, action, details, user_id, user_name)
+    VALUES (${crypto.randomUUID()}, ${action}, ${details}, ${user.id}, ${user.name})
+  `;
+}
+
+function publicUser(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    approved: user.approved,
+    createdAt: user.created_at,
+  };
+}
+
+function sendJson(res, status, payload) {
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify(payload));
+}
+
+function requireMethod(req, res, method) {
+  if (req.method === method) return true;
+  sendJson(res, 405, { error: `Use ${method} for this endpoint.` });
+  return false;
+}
+
+module.exports = {
+  addAudit,
+  initDb,
+  publicUser,
+  requireMethod,
+  sendJson,
+  sql,
+  verifyPassword,
+  hashPassword,
+};

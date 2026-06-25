@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inventory Control</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="auth-panel" id="authPanel">
+        <div class="brand-block">
+          <span class="brand-mark">IC</span>
+          <div>
+            <h1>Inventory Control</h1>
+            <p>Sign in to record stock, photos, locations, and audit history.</p>
+          </div>
+        </div>
+
+        <form class="auth-card" id="authForm">
+          <div class="mode-tabs" role="tablist" aria-label="Authentication mode">
+            <button class="tab-button active" id="loginTab" type="button">Sign in</button>
+            <button class="tab-button" id="signupTab" type="button">Request access</button>
+          </div>
+
+          <label id="nameField" class="hidden">
+            Full name
+            <input id="nameInput" autocomplete="name" />
+          </label>
+
+          <label>
+            Email
+            <input id="emailInput" type="email" autocomplete="email" required />
+          </label>
+
+          <label>
+            Password
+            <input id="passwordInput" type="password" autocomplete="current-password" required />
+          </label>
+
+          <button class="primary-action" type="submit" id="authSubmit">Sign in</button>
+          <p class="form-note" id="authNote">
+            Demo admin: <strong>admin@inventory.local</strong> / <strong>admin123</strong>
+          </p>
+        </form>
+      </section>
+
+      <section class="dashboard hidden" id="dashboard">
+        <header class="top-bar">
+          <div>
+            <p class="eyebrow" id="roleLabel">Inventory user</p>
+            <h2 id="welcomeTitle">Inventory</h2>
+          </div>
+          <button class="ghost-button" id="signOutButton" type="button">Sign out</button>
+        </header>
+
+        <nav class="mobile-tabs" aria-label="Dashboard sections">
+          <button class="mobile-tab active" data-view="inventoryView" type="button">Inventory</button>
+          <button class="mobile-tab" data-view="auditView" type="button">Audit</button>
+          <button class="mobile-tab admin-only" data-view="usersView" type="button">Users</button>
+        </nav>
+
+        <div class="content-grid">
+          <section class="panel entry-panel" id="inventoryView">
+            <div class="panel-heading">
+              <h3>Add inventory item</h3>
+              <p>Camera and gallery uploads work on supported phones.</p>
+            </div>
+
+            <form id="inventoryForm" class="inventory-form">
+              <label>
+                SKU
+                <input id="skuInput" placeholder="SKU-1001" required />
+              </label>
+
+              <label>
+                Item name
+                <input id="itemNameInput" placeholder="Item name" required />
+              </label>
+
+              <div class="form-row">
+                <label>
+                  Quantity
+                  <input id="quantityInput" type="number" min="0" step="1" required />
+                </label>
+
+                <label>
+                  Stored location
+                  <input id="locationInput" placeholder="Rack A3" required />
+                </label>
+              </div>
+
+              <label>
+                Photo
+                <input id="photoInput" type="file" accept="image/*" capture="environment" required />
+              </label>
+
+              <div class="photo-preview" id="photoPreview">
+                <span>No photo selected</span>
+              </div>
+
+              <button class="primary-action" type="submit">Save item</button>
+            </form>
+          </section>
+
+          <section class="panel list-panel">
+            <div class="panel-heading">
+              <h3>Current inventory</h3>
+              <p id="inventoryCount">0 items</p>
+            </div>
+            <div class="inventory-list" id="inventoryList"></div>
+          </section>
+
+          <section class="panel admin-panel" id="auditView">
+            <div class="panel-heading">
+              <h3>Activity audit</h3>
+              <p>Every inventory entry with user and timestamp.</p>
+            </div>
+            <div class="audit-list" id="auditList"></div>
+          </section>
+
+          <section class="panel admin-panel admin-only" id="usersView">
+            <div class="panel-heading">
+              <h3>User approvals</h3>
+              <p>Approve new users before they can add inventory.</p>
+            </div>
+            <div class="user-list" id="userList"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
