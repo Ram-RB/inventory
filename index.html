@@ -131,16 +131,25 @@
               <h3>Activity audit</h3>
               <p>Every inventory entry with user and timestamp.</p>
             </div>
-            <div class="audit-controls">
-              <label>
-                Sort audit
-                <select id="auditSortSelect">
-                  <option value="timestamp-desc">Newest first</option>
-                  <option value="timestamp-asc">Oldest first</option>
-                  <option value="action-asc">Action A-Z</option>
-                  <option value="user-asc">User A-Z</option>
-                </select>
-              </label>
+            <div class="audit-tools">
+              <div class="search-box audit-search">
+                <label>
+                  Search audit
+                  <input id="auditSearchInput" placeholder="Search action, user, or time" autocomplete="off" />
+                </label>
+                <div class="suggestions hidden" id="auditSuggestions"></div>
+              </div>
+              <div class="audit-controls">
+                <label>
+                  Sort audit
+                  <select id="auditSortSelect">
+                    <option value="timestamp-desc">Newest first</option>
+                    <option value="timestamp-asc">Oldest first</option>
+                    <option value="action-asc">Action A-Z</option>
+                    <option value="user-asc">User A-Z</option>
+                  </select>
+                </label>
+              </div>
             </div>
             <div class="audit-list" id="auditList"></div>
           </section>

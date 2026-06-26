@@ -15,6 +15,7 @@ let auditSortMode = localStorage.getItem(AUDIT_SORT_STORAGE_KEY) || "timestamp-d
 let selectedPhoto = "";
 let refreshTimer = null;
 let inventorySearchTerm = "";
+let auditSearchTerm = "";
 let editingItemId = null;
 
 const authPanel = document.querySelector("#authPanel");
@@ -36,6 +37,8 @@ const inventorySearchInput = document.querySelector("#inventorySearchInput");
 const inventorySuggestions = document.querySelector("#inventorySuggestions");
 const inventoryList = document.querySelector("#inventoryList");
 const auditList = document.querySelector("#auditList");
+const auditSearchInput = document.querySelector("#auditSearchInput");
+const auditSuggestions = document.querySelector("#auditSuggestions");
 const auditSortSelect = document.querySelector("#auditSortSelect");
 const userList = document.querySelector("#userList");
 const inventoryCount = document.querySelector("#inventoryCount");
@@ -341,10 +344,17 @@ function renderAudit(isAdmin) {
     return;
   }
 
-  const sortedAudit = getSortedAudit();
+  if (!state.audit.length) {
+    auditList.innerHTML = '<p class="empty-state">No activity has been recorded yet.</p>';
+    renderAuditSuggestions();
+    return;
+  }
+
+  const sortedAudit = getSortedAudit(filterAuditEntries());
 
   if (!sortedAudit.length) {
-    auditList.innerHTML = '<p class="empty-state">No activity has been recorded yet.</p>';
+    auditList.innerHTML = '<p class="empty-state">No audit records match your search.</p>';
+    renderAuditSuggestions();
     return;
   }
 
@@ -364,10 +374,68 @@ function renderAudit(isAdmin) {
       `,
     )
     .join("");
+  renderAuditSuggestions();
 }
 
-function getSortedAudit() {
-  return [...state.audit].sort((first, second) => {
+function filterAuditEntries() {
+  const term = auditSearchTerm.trim().toLowerCase();
+  if (!term) return state.audit;
+
+  return state.audit.filter((entry) =>
+    [entry.action, entry.details, entry.userName, formatDate(entry.timestamp)]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(term)),
+  );
+}
+
+function getAuditSuggestions() {
+  const term = auditSearchTerm.trim().toLowerCase();
+  if (!term) return [];
+
+  const suggestions = [];
+  const seen = new Set();
+
+  state.audit.forEach((entry) => {
+    [
+      { label: entry.action, detail: "Action" },
+      { label: entry.userName, detail: "User" },
+      { label: entry.details, detail: "Details" },
+      { label: formatDate(entry.timestamp), detail: "Time" },
+    ].forEach((candidate) => {
+      if (!candidate.label) return;
+      const key = String(candidate.label).toLowerCase();
+      if (seen.has(key) || !key.includes(term)) return;
+      seen.add(key);
+      suggestions.push(candidate);
+    });
+  });
+
+  return suggestions.slice(0, 6);
+}
+
+function renderAuditSuggestions() {
+  const suggestions = getAuditSuggestions();
+  if (!suggestions.length || document.activeElement !== auditSearchInput) {
+    auditSuggestions.classList.add("hidden");
+    auditSuggestions.innerHTML = "";
+    return;
+  }
+
+  auditSuggestions.innerHTML = suggestions
+    .map(
+      (suggestion) => `
+        <button class="suggestion-option" type="button" data-audit-suggestion="${escapeHtml(suggestion.label)}">
+          <strong>${escapeHtml(suggestion.label)}</strong>
+          <span>${escapeHtml(suggestion.detail)}</span>
+        </button>
+      `,
+    )
+    .join("");
+  auditSuggestions.classList.remove("hidden");
+}
+
+function getSortedAudit(entries) {
+  return [...entries].sort((first, second) => {
     if (auditSortMode === "timestamp-asc") {
       return new Date(first.timestamp) - new Date(second.timestamp);
     }
@@ -530,6 +598,21 @@ inventorySearchInput.addEventListener("keydown", (event) => {
   renderInventory();
 });
 
+auditSearchInput.addEventListener("input", () => {
+  auditSearchTerm = auditSearchInput.value.trim();
+  renderAudit(currentUser()?.role === "admin");
+});
+
+auditSearchInput.addEventListener("focus", renderAuditSuggestions);
+
+auditSearchInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  auditSearchTerm = "";
+  auditSearchInput.value = "";
+  auditSuggestions.classList.add("hidden");
+  renderAudit(currentUser()?.role === "admin");
+});
+
 inventorySuggestions.addEventListener("mousedown", (event) => {
   const option = event.target.closest("[data-suggestion]");
   if (!option) return;
@@ -539,9 +622,19 @@ inventorySuggestions.addEventListener("mousedown", (event) => {
   renderInventory();
 });
 
+auditSuggestions.addEventListener("mousedown", (event) => {
+  const option = event.target.closest("[data-audit-suggestion]");
+  if (!option) return;
+  auditSearchTerm = option.dataset.auditSuggestion;
+  auditSearchInput.value = auditSearchTerm;
+  auditSuggestions.classList.add("hidden");
+  renderAudit(currentUser()?.role === "admin");
+});
+
 document.addEventListener("click", (event) => {
   if (event.target.closest(".search-box")) return;
   inventorySuggestions.classList.add("hidden");
+  auditSuggestions.classList.add("hidden");
 });
 
 inventoryList.addEventListener("click", async (event) => {

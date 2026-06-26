@@ -302,9 +302,22 @@ h2 {
   padding: 14px 14px 0;
 }
 
-.audit-controls {
-  max-width: 260px;
+.audit-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 12px;
+  align-items: start;
   padding: 14px 14px 0;
+}
+
+.audit-tools .search-box,
+.audit-controls {
+  padding: 0;
+}
+
+.audit-tools .suggestions {
+  right: 0;
+  left: 0;
 }
 
 .suggestions {
@@ -679,6 +692,10 @@ h2 {
 
   .item-actions button {
     flex: 1;
+  }
+
+  .audit-tools {
+    grid-template-columns: 1fr;
   }
 
   .audit-row,
