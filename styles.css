@@ -70,7 +70,7 @@ button:disabled {
 .auth-panel {
   display: grid;
   min-height: 100vh;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  grid-template-columns: minmax(0, 1fr) minmax(520px, 620px);
   gap: 48px;
   align-items: center;
 }
@@ -134,9 +134,22 @@ h1 {
   padding: 16px;
 }
 
-.auth-actions {
+.auth-combined {
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.auth-section {
   display: grid;
+  align-content: start;
   gap: 16px;
+  min-width: 0;
+}
+
+.auth-section + .auth-section {
+  margin-left: 16px;
+  padding-left: 16px;
+  border-left: 1px solid var(--divider);
 }
 
 .auth-card-head {
@@ -679,6 +692,19 @@ h2 {
   .form-row,
   .audit-tools {
     grid-template-columns: 1fr;
+  }
+
+  .auth-combined {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-section + .auth-section {
+    margin-top: 16px;
+    margin-left: 0;
+    padding-top: 16px;
+    padding-left: 0;
+    border-top: 1px solid var(--divider);
+    border-left: 0;
   }
 
   .panel-heading {
