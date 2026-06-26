@@ -9,7 +9,6 @@ const SESSION_STORAGE_KEY = "inventory-control-current-user";
 const VIEW_STORAGE_KEY = "inventory-control-active-view";
 const AUDIT_SORT_STORAGE_KEY = "inventory-control-audit-sort";
 const REFRESH_INTERVAL_MS = 5000;
-let authMode = "login";
 let activeViewId = localStorage.getItem(VIEW_STORAGE_KEY) || "inventoryView";
 let auditSortMode = localStorage.getItem(AUDIT_SORT_STORAGE_KEY) || "timestamp-desc";
 let selectedPhoto = "";
@@ -20,15 +19,15 @@ let editingItemId = null;
 
 const authPanel = document.querySelector("#authPanel");
 const dashboard = document.querySelector("#dashboard");
-const authForm = document.querySelector("#authForm");
-const loginTab = document.querySelector("#loginTab");
-const signupTab = document.querySelector("#signupTab");
-const authSubmit = document.querySelector("#authSubmit");
-const authNote = document.querySelector("#authNote");
-const nameField = document.querySelector("#nameField");
-const nameInput = document.querySelector("#nameInput");
+const loginForm = document.querySelector("#loginForm");
+const signupForm = document.querySelector("#signupForm");
+const loginSubmit = document.querySelector("#loginSubmit");
+const signupSubmit = document.querySelector("#signupSubmit");
 const emailInput = document.querySelector("#emailInput");
 const passwordInput = document.querySelector("#passwordInput");
+const signupNameInput = document.querySelector("#signupNameInput");
+const signupEmailInput = document.querySelector("#signupEmailInput");
+const signupPasswordInput = document.querySelector("#signupPasswordInput");
 const signOutButton = document.querySelector("#signOutButton");
 const inventoryForm = document.querySelector("#inventoryForm");
 const photoInput = document.querySelector("#photoInput");
@@ -154,20 +153,6 @@ function startRealtimeRefresh() {
 function stopRealtimeRefresh() {
   window.clearInterval(refreshTimer);
   refreshTimer = null;
-}
-
-function setAuthMode(mode) {
-  authMode = mode;
-  const isLogin = mode === "login";
-  loginTab.classList.toggle("active", isLogin);
-  signupTab.classList.toggle("active", !isLogin);
-  nameField.classList.toggle("hidden", isLogin);
-  nameInput.required = !isLogin;
-  nameInput.value = isLogin ? "" : nameInput.value;
-  authSubmit.textContent = isLogin ? "Sign in" : "Request access";
-  authNote.innerHTML = isLogin
-    ? "Use your approved account to sign in."
-    : "New accounts stay pending until an admin approves them.";
 }
 
 function renderApp() {
@@ -513,34 +498,14 @@ function escapeHtml(value) {
   });
 }
 
-loginTab.addEventListener("click", () => setAuthMode("login"));
-signupTab.addEventListener("click", () => setAuthMode("signup"));
-
-authForm.addEventListener("submit", async (event) => {
+loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  const name = nameInput.value.trim();
   const email = emailInput.value.trim().toLowerCase();
   const password = passwordInput.value;
 
   try {
-    setButtonBusy(authSubmit, true, authMode === "signup" ? "Requesting..." : "Signing in...");
-    if (authMode === "signup") {
-      if (!name) {
-        showToast("Please enter your full name.");
-        return;
-      }
-
-      await apiRequest("/api/signup", {
-        method: "POST",
-        body: JSON.stringify({ name, email, password }),
-      });
-      authForm.reset();
-      setAuthMode("login");
-      showToast("Access request sent. Admin approval is required.");
-      return;
-    }
-
+    setButtonBusy(loginSubmit, true, "Signing in...");
     const { user } = await apiRequest("/api/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
@@ -555,8 +520,30 @@ authForm.addEventListener("submit", async (event) => {
   } catch (error) {
     showToast(error.message);
   } finally {
-    setButtonBusy(authSubmit, false);
+    setButtonBusy(loginSubmit, false);
     setLoading(false);
+  }
+});
+
+signupForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const name = signupNameInput.value.trim();
+  const email = signupEmailInput.value.trim().toLowerCase();
+  const password = signupPasswordInput.value;
+
+  try {
+    setButtonBusy(signupSubmit, true, "Requesting...");
+    await apiRequest("/api/signup", {
+      method: "POST",
+      body: JSON.stringify({ name, email, password }),
+    });
+    signupForm.reset();
+    showToast("Access request sent. Admin approval is required.");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setButtonBusy(signupSubmit, false);
   }
 });
 
@@ -821,7 +808,6 @@ auditSortSelect.addEventListener("change", () => {
 });
 
 async function initializeApp() {
-  setAuthMode("login");
   const savedUser = loadSession();
 
   if (!savedUser) {

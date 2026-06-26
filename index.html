@@ -17,32 +17,50 @@
           </div>
         </div>
 
-        <form class="auth-card" id="authForm">
-          <div class="mode-tabs" role="tablist" aria-label="Authentication mode">
-            <button class="tab-button active" id="loginTab" type="button">Sign in</button>
-            <button class="tab-button" id="signupTab" type="button">Request access</button>
-          </div>
+        <div class="auth-actions">
+          <form class="auth-card" id="loginForm">
+            <div class="auth-card-head">
+              <h3>Sign in</h3>
+              <p>Use your approved account.</p>
+            </div>
 
-          <label id="nameField" class="hidden">
-            Full name
-            <input id="nameInput" autocomplete="name" />
-          </label>
+            <label>
+              Email
+              <input id="emailInput" type="email" autocomplete="email" required />
+            </label>
 
-          <label>
-            Email
-            <input id="emailInput" type="email" autocomplete="email" required />
-          </label>
+            <label>
+              Password
+              <input id="passwordInput" type="password" autocomplete="current-password" required />
+            </label>
 
-          <label>
-            Password
-            <input id="passwordInput" type="password" autocomplete="current-password" required />
-          </label>
+            <button class="primary-action" type="submit" id="loginSubmit">Sign in</button>
+          </form>
 
-          <button class="primary-action" type="submit" id="authSubmit">Sign in</button>
-          <p class="form-note" id="authNote">
-            Use your approved account to sign in.
-          </p>
-        </form>
+          <form class="auth-card" id="signupForm">
+            <div class="auth-card-head">
+              <h3>Request access</h3>
+              <p>New accounts stay pending until admin approval.</p>
+            </div>
+
+            <label>
+              Full name
+              <input id="signupNameInput" autocomplete="name" required />
+            </label>
+
+            <label>
+              Email
+              <input id="signupEmailInput" type="email" autocomplete="email" required />
+            </label>
+
+            <label>
+              Password
+              <input id="signupPasswordInput" type="password" autocomplete="new-password" required />
+            </label>
+
+            <button class="ghost-button" type="submit" id="signupSubmit">Request access</button>
+          </form>
+        </div>
       </section>
 
       <section class="dashboard hidden" id="dashboard">
