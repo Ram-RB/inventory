@@ -694,19 +694,6 @@ h2 {
     grid-template-columns: 1fr;
   }
 
-  .auth-combined {
-    grid-template-columns: 1fr;
-  }
-
-  .auth-section + .auth-section {
-    margin-top: 16px;
-    margin-left: 0;
-    padding-top: 16px;
-    padding-left: 0;
-    border-top: 1px solid var(--divider);
-    border-left: 0;
-  }
-
   .panel-heading {
     display: block;
   }
@@ -730,6 +717,19 @@ h2 {
 
   .brand-logo-hero {
     width: 190px;
+  }
+
+  .auth-combined {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-section + .auth-section {
+    margin-top: 16px;
+    margin-left: 0;
+    padding-top: 16px;
+    padding-left: 0;
+    border-top: 1px solid var(--divider);
+    border-left: 0;
   }
 
   .ghost-button {
