@@ -70,7 +70,7 @@ button:disabled {
 .auth-panel {
   display: grid;
   min-height: 100vh;
-  grid-template-columns: minmax(0, 1fr) minmax(520px, 620px);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
   gap: 48px;
   align-items: center;
 }
@@ -134,22 +134,11 @@ h1 {
   padding: 16px;
 }
 
-.auth-combined {
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
-}
-
 .auth-section {
   display: grid;
   align-content: start;
   gap: 16px;
   min-width: 0;
-}
-
-.auth-section + .auth-section {
-  margin-left: 16px;
-  padding-left: 16px;
-  border-left: 1px solid var(--divider);
 }
 
 .auth-card-head {
@@ -169,6 +158,24 @@ h1 {
   color: var(--text-2);
   font-size: 11px;
   line-height: 1.4;
+}
+
+.auth-link {
+  justify-self: start;
+  border: 0;
+  border-bottom: 1px solid var(--text-2);
+  background: transparent;
+  color: var(--text-2);
+  padding: 0 0 3px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.auth-link:hover {
+  border-bottom-color: var(--text);
+  color: var(--text);
 }
 
 .mobile-tabs {
@@ -717,19 +724,6 @@ h2 {
 
   .brand-logo-hero {
     width: 190px;
-  }
-
-  .auth-combined {
-    grid-template-columns: 1fr;
-  }
-
-  .auth-section + .auth-section {
-    margin-top: 16px;
-    margin-left: 0;
-    padding-top: 16px;
-    padding-left: 0;
-    border-top: 1px solid var(--divider);
-    border-left: 0;
   }
 
   .ghost-button {

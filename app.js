@@ -23,6 +23,8 @@ const loginForm = document.querySelector("#loginForm");
 const signupForm = document.querySelector("#signupForm");
 const loginSubmit = document.querySelector("#loginSubmit");
 const signupSubmit = document.querySelector("#signupSubmit");
+const showSignupLink = document.querySelector("#showSignupLink");
+const showLoginLink = document.querySelector("#showLoginLink");
 const emailInput = document.querySelector("#emailInput");
 const passwordInput = document.querySelector("#passwordInput");
 const signupNameInput = document.querySelector("#signupNameInput");
@@ -153,6 +155,19 @@ function startRealtimeRefresh() {
 function stopRealtimeRefresh() {
   window.clearInterval(refreshTimer);
   refreshTimer = null;
+}
+
+function setAuthView(view) {
+  const isSignup = view === "signup";
+  loginForm.classList.toggle("hidden", isSignup);
+  signupForm.classList.toggle("hidden", !isSignup);
+  if (isSignup) {
+    loginForm.reset();
+    signupNameInput.focus();
+  } else {
+    signupForm.reset();
+    emailInput.focus();
+  }
 }
 
 function renderApp() {
@@ -525,6 +540,9 @@ loginForm.addEventListener("submit", async (event) => {
   }
 });
 
+showSignupLink.addEventListener("click", () => setAuthView("signup"));
+showLoginLink.addEventListener("click", () => setAuthView("login"));
+
 signupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -539,6 +557,7 @@ signupForm.addEventListener("submit", async (event) => {
       body: JSON.stringify({ name, email, password }),
     });
     signupForm.reset();
+    setAuthView("login");
     showToast("Access request sent. Admin approval is required.");
   } catch (error) {
     showToast(error.message);

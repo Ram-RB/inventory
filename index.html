@@ -17,7 +17,7 @@
           </div>
         </div>
 
-        <div class="auth-card auth-combined">
+        <div class="auth-card auth-switch-card">
           <form class="auth-section" id="loginForm">
             <div class="auth-card-head">
               <h3>Sign in</h3>
@@ -35,9 +35,10 @@
             </label>
 
             <button class="primary-action" type="submit" id="loginSubmit">Sign in</button>
+            <button class="auth-link" id="showSignupLink" type="button">New user? Get registered</button>
           </form>
 
-          <form class="auth-section" id="signupForm">
+          <form class="auth-section hidden" id="signupForm">
             <div class="auth-card-head">
               <h3>Request access</h3>
               <p>New accounts stay pending until admin approval.</p>
@@ -58,7 +59,8 @@
               <input id="signupPasswordInput" type="password" autocomplete="new-password" required />
             </label>
 
-            <button class="ghost-button" type="submit" id="signupSubmit">Request access</button>
+            <button class="primary-action" type="submit" id="signupSubmit">Request access</button>
+            <button class="auth-link" id="showLoginLink" type="button">Already approved? Sign in</button>
           </form>
         </div>
       </section>
