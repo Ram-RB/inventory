@@ -12,12 +12,9 @@ A mobile-friendly inventory web app for shared inventory tracking.
 - Phone camera/gallery photo selection using `accept="image/*"` and `capture="environment"`.
 - Vercel serverless API routes with Vercel Postgres storage.
 
-## Demo Admin
+## Admin Account
 
-- Email: `admin@inventory.local`
-- Password: `admin123`
-
-Change this seed account before using the app for real operations.
+Create the first admin through the database or set `ADMIN_EMAIL` and `ADMIN_PASSWORD` before the first deployment so the app can seed one automatically.
 
 ## Run Locally
 

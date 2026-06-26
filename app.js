@@ -5,8 +5,6 @@ let state = {
   audit: [],
 };
 
-const FALLBACK_STORAGE_KEY = "inventory-control-fallback";
-let usingFallbackStorage = false;
 let authMode = "login";
 let selectedPhoto = "";
 
@@ -51,10 +49,6 @@ function showToast(message) {
 }
 
 async function apiRequest(path, options = {}) {
-  if (usingFallbackStorage) {
-    return fallbackRequest(path, options);
-  }
-
   const response = await fetch(path, {
     headers: {
       "Content-Type": "application/json",
@@ -65,149 +59,10 @@ async function apiRequest(path, options = {}) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    if (String(payload.error || "").includes("missing_connection_string")) {
-      usingFallbackStorage = true;
-      showToast("Database is not connected. Using browser storage for now.");
-      return fallbackRequest(path, options);
-    }
-
     throw new Error(payload.error || "Request failed.");
   }
 
   return payload;
-}
-
-function createId() {
-  if (crypto.randomUUID) return crypto.randomUUID();
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function loadFallbackState() {
-  const saved = localStorage.getItem(FALLBACK_STORAGE_KEY);
-  if (saved) {
-    return JSON.parse(saved);
-  }
-
-  return {
-    users: [
-      {
-        id: "admin",
-        name: "Admin User",
-        email: "admin@inventory.local",
-        password: "admin123",
-        role: "admin",
-        approved: true,
-        createdAt: new Date().toISOString(),
-      },
-    ],
-    items: [],
-    audit: [],
-  };
-}
-
-function saveFallbackState(data) {
-  localStorage.setItem(FALLBACK_STORAGE_KEY, JSON.stringify(data));
-}
-
-function publicFallbackUser(user) {
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    approved: user.approved,
-    createdAt: user.createdAt,
-  };
-}
-
-function addFallbackAudit(data, action, details, user) {
-  data.audit.unshift({
-    id: createId(),
-    action,
-    details,
-    userId: user.id,
-    userName: user.name,
-    timestamp: new Date().toISOString(),
-  });
-}
-
-async function fallbackRequest(path, options = {}) {
-  const data = loadFallbackState();
-  const body = options.body ? JSON.parse(options.body) : {};
-
-  if (path === "/api/state") {
-    return {
-      users: data.users.map(publicFallbackUser),
-      items: data.items,
-      audit: data.audit,
-    };
-  }
-
-  if (path === "/api/signup") {
-    if (data.users.some((user) => user.email === body.email)) {
-      throw new Error("An account with this email already exists.");
-    }
-
-    data.users.push({
-      id: createId(),
-      name: body.name,
-      email: body.email,
-      password: body.password,
-      role: "user",
-      approved: false,
-      createdAt: new Date().toISOString(),
-    });
-    saveFallbackState(data);
-    return { ok: true };
-  }
-
-  if (path === "/api/login") {
-    const user = data.users.find((item) => item.email === body.email && item.password === body.password);
-    if (!user) throw new Error("Sign in failed. Check email and password.");
-    if (!user.approved) throw new Error("Your account is waiting for admin approval.");
-
-    addFallbackAudit(data, "User signed in", `${user.name} signed in`, user);
-    saveFallbackState(data);
-    return { user: publicFallbackUser(user) };
-  }
-
-  if (path === "/api/items") {
-    const user = data.users.find((item) => item.id === body.updatedById && item.approved);
-    if (!user) throw new Error("Approved user is required.");
-
-    const now = new Date().toISOString();
-    const item = {
-      id: createId(),
-      sku: body.sku,
-      name: body.name,
-      quantity: Number(body.quantity),
-      photo: body.photo,
-      location: body.location,
-      updatedById: user.id,
-      updatedByName: user.name,
-      updatedAt: now,
-      createdAt: now,
-    };
-
-    data.items.unshift(item);
-    addFallbackAudit(data, "Inventory item added", `${item.name} (${item.sku}), quantity ${item.quantity}, location ${item.location}`, user);
-    saveFallbackState(data);
-    return { ok: true };
-  }
-
-  if (path === "/api/approve-user") {
-    const admin = data.users.find((item) => item.id === body.adminId && item.role === "admin" && item.approved);
-    const user = data.users.find((item) => item.id === body.userId);
-    if (!admin) throw new Error("Admin permission is required.");
-    if (!user) throw new Error("User was not found.");
-
-    user.approved = true;
-    addFallbackAudit(data, "User approved", `${user.name} (${user.email})`, admin);
-    saveFallbackState(data);
-    return { ok: true };
-  }
-
-  throw new Error("Request failed.");
 }
 
 async function refreshState() {
@@ -231,7 +86,7 @@ function setAuthMode(mode) {
   nameInput.value = isLogin ? "" : nameInput.value;
   authSubmit.textContent = isLogin ? "Sign in" : "Request access";
   authNote.innerHTML = isLogin
-    ? 'Admin: <strong>admin@inventory.local</strong> / <strong>admin123</strong>'
+    ? "Use your approved account to sign in."
     : "New accounts stay pending until an admin approves them.";
 }
 

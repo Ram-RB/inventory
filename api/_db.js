@@ -1,8 +1,8 @@
 const crypto = require("crypto");
 const postgres = require("postgres");
 
-const ADMIN_EMAIL = "admin@inventory.local";
-const ADMIN_PASSWORD = "admin123";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 let client;
 
 function getClient() {
@@ -74,6 +74,8 @@ async function initDb() {
       timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD) return;
 
   const admin = await sql`SELECT id FROM users WHERE email = ${ADMIN_EMAIL} LIMIT 1`;
   if (!admin.rows.length) {
