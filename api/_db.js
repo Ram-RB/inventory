@@ -87,10 +87,23 @@ async function initDb() {
 }
 
 async function addAudit(action, details, user) {
-  await sql`
+  const audit = await sql`
     INSERT INTO audit_entries (id, action, details, user_id, user_name)
     VALUES (${crypto.randomUUID()}, ${action}, ${details}, ${user.id}, ${user.name})
+    RETURNING *
   `;
+  return audit.rows[0];
+}
+
+function publicAudit(entry) {
+  return {
+    id: entry.id,
+    action: entry.action,
+    details: entry.details,
+    userId: entry.user_id,
+    userName: entry.user_name,
+    timestamp: entry.timestamp,
+  };
 }
 
 function publicUser(user) {
@@ -120,6 +133,7 @@ module.exports = {
   addAudit,
   initDb,
   publicUser,
+  publicAudit,
   requireMethod,
   sendJson,
   sql,

@@ -6,8 +6,12 @@ let state = {
 };
 
 const SESSION_STORAGE_KEY = "inventory-control-current-user";
+const VIEW_STORAGE_KEY = "inventory-control-active-view";
+const REFRESH_INTERVAL_MS = 5000;
 let authMode = "login";
+let activeViewId = localStorage.getItem(VIEW_STORAGE_KEY) || "inventoryView";
 let selectedPhoto = "";
+let refreshTimer = null;
 
 const authPanel = document.querySelector("#authPanel");
 const dashboard = document.querySelector("#dashboard");
@@ -105,15 +109,47 @@ async function apiRequest(path, options = {}) {
   return payload;
 }
 
-async function refreshState() {
+async function refreshState({ silent = false } = {}) {
   try {
     const data = await apiRequest("/api/state");
     state.users = data.users || [];
     state.items = data.items || [];
     state.audit = data.audit || [];
+    return true;
   } catch (error) {
-    showToast(error.message || "Could not load inventory data.");
+    if (!silent) {
+      showToast(error.message || "Could not load inventory data.");
+    }
+    return false;
   }
+}
+
+function startRealtimeRefresh() {
+  window.clearInterval(refreshTimer);
+  refreshTimer = window.setInterval(async () => {
+    if (!currentUser() || document.hidden) return;
+    const loaded = await refreshState({ silent: true });
+    if (!loaded) return;
+
+    const freshUser = state.users.find((user) => user.id === currentUser().id);
+    if (!freshUser || !freshUser.approved) {
+      state.currentUser = null;
+      clearSession();
+      stopRealtimeRefresh();
+      showToast("Your account access is no longer active.");
+      renderApp();
+      return;
+    }
+
+    state.currentUser = freshUser;
+    saveSession(freshUser);
+    renderApp();
+  }, REFRESH_INTERVAL_MS);
+}
+
+function stopRealtimeRefresh() {
+  window.clearInterval(refreshTimer);
+  refreshTimer = null;
 }
 
 function setAuthMode(mode) {
@@ -148,7 +184,7 @@ function renderApp() {
   renderInventory();
   renderUsers(isAdmin);
   renderAudit(isAdmin);
-  setMobileView("inventoryView");
+  setMobileView(activeViewId);
 }
 
 function renderInventory() {
@@ -247,6 +283,8 @@ function renderUsers(isAdmin) {
 function setMobileView(viewId) {
   const user = currentUser();
   const allowedView = user?.role === "admin" ? viewId : viewId === "usersView" ? "inventoryView" : viewId;
+  activeViewId = allowedView;
+  localStorage.setItem(VIEW_STORAGE_KEY, allowedView);
 
   document.querySelectorAll(".panel").forEach((panel) => {
     panel.classList.toggle("active-view", panel.id === allowedView || (!panel.id && allowedView === "inventoryView"));
@@ -307,6 +345,7 @@ authForm.addEventListener("submit", async (event) => {
     saveSession(user);
     setLoading(true, "Loading dashboard...");
     await refreshState();
+    startRealtimeRefresh();
     renderApp();
   } catch (error) {
     showToast(error.message);
@@ -319,6 +358,7 @@ authForm.addEventListener("submit", async (event) => {
 signOutButton.addEventListener("click", () => {
   state.currentUser = null;
   clearSession();
+  stopRealtimeRefresh();
   renderApp();
 });
 
@@ -360,15 +400,23 @@ inventoryForm.addEventListener("submit", async (event) => {
   try {
     const saveButton = inventoryForm.querySelector('button[type="submit"]');
     setButtonBusy(saveButton, true, "Saving...");
-    await apiRequest("/api/items", {
+    const result = await apiRequest("/api/items", {
       method: "POST",
       body: JSON.stringify(item),
     });
 
+    if (result.item) {
+      state.items = [result.item, ...state.items.filter((existing) => existing.id !== result.item.id)];
+      if (result.audit) {
+        state.audit = [result.audit, ...state.audit.filter((entry) => entry.id !== result.audit.id)];
+      }
+      renderApp();
+    }
+
     inventoryForm.reset();
     selectedPhoto = "";
     photoPreview.innerHTML = "<span>No photo selected</span>";
-    await refreshState();
+    await refreshState({ silent: true });
     renderApp();
     showToast("Inventory item saved.");
   } catch (error) {
@@ -388,7 +436,7 @@ userList.addEventListener("click", async (event) => {
 
   try {
     setButtonBusy(button, true, approving ? "Approving..." : "Revoking...");
-    await apiRequest("/api/approve-user", {
+    const result = await apiRequest("/api/approve-user", {
       method: "POST",
       body: JSON.stringify({
         userId,
@@ -396,7 +444,16 @@ userList.addEventListener("click", async (event) => {
         approved: approving,
       }),
     });
-    await refreshState();
+
+    if (result.user) {
+      state.users = state.users.map((user) => (user.id === result.user.id ? result.user : user));
+      if (result.audit) {
+        state.audit = [result.audit, ...state.audit.filter((entry) => entry.id !== result.audit.id)];
+      }
+      renderApp();
+    }
+
+    await refreshState({ silent: true });
     renderApp();
     showToast(approving ? "User approved." : "User access revoked.");
   } catch (error) {
@@ -423,17 +480,23 @@ async function initializeApp() {
   setLoading(true, "Restoring your session...");
 
   try {
-    await refreshState();
-    const freshUser = state.users.find((user) => user.id === savedUser.id);
-    if (!freshUser || !freshUser.approved) {
-      state.currentUser = null;
-      clearSession();
-      showToast("Your account access is no longer active.");
-    } else {
-      state.currentUser = freshUser;
-      saveSession(freshUser);
+    const loaded = await refreshState();
+    if (loaded) {
+      const freshUser = state.users.find((user) => user.id === savedUser.id);
+      if (!freshUser || !freshUser.approved) {
+        state.currentUser = null;
+        clearSession();
+        showToast("Your account access is no longer active.");
+      } else {
+        state.currentUser = freshUser;
+        saveSession(freshUser);
+        startRealtimeRefresh();
+      }
     }
   } finally {
+    if (state.currentUser) {
+      startRealtimeRefresh();
+    }
     setLoading(false);
     renderApp();
   }

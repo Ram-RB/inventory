@@ -1,4 +1,4 @@
-const { initDb, publicUser, requireMethod, sendJson, sql } = require("./_db");
+const { initDb, publicAudit, publicUser, requireMethod, sendJson, sql } = require("./_db");
 
 module.exports = async function handler(req, res) {
   if (!requireMethod(req, res, "GET")) return;
@@ -39,14 +39,7 @@ module.exports = async function handler(req, res) {
         updatedAt: item.updated_at,
         createdAt: item.created_at,
       })),
-      audit: audit.rows.map((entry) => ({
-        id: entry.id,
-        action: entry.action,
-        details: entry.details,
-        userId: entry.user_id,
-        userName: entry.user_name,
-        timestamp: entry.timestamp,
-      })),
+      audit: audit.rows.map(publicAudit),
     });
   } catch (error) {
     sendJson(res, 500, { error: error.message || "Could not load data." });

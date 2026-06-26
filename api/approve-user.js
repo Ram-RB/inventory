@@ -1,4 +1,4 @@
-const { addAudit, initDb, requireMethod, sendJson, sql } = require("./_db");
+const { addAudit, initDb, publicAudit, publicUser, requireMethod, sendJson, sql } = require("./_db");
 
 module.exports = async function handler(req, res) {
   if (!requireMethod(req, res, "POST")) return;
@@ -21,13 +21,13 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    await sql`UPDATE users SET approved = ${Boolean(approved)} WHERE id = ${userId}`;
-    await addAudit(
+    const updated = await sql`UPDATE users SET approved = ${Boolean(approved)} WHERE id = ${userId} RETURNING *`;
+    const audit = await addAudit(
       approved ? "User approved" : "User access revoked",
       `${user.name} (${user.email})`,
       admin,
     );
-    sendJson(res, 200, { ok: true });
+    sendJson(res, 200, { ok: true, user: publicUser(updated.rows[0]), audit: publicAudit(audit) });
   } catch (error) {
     sendJson(res, 500, { error: error.message || "Could not approve user." });
   }
