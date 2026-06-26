@@ -435,6 +435,28 @@ h2 {
   line-height: 1.35;
 }
 
+.item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.item-edit-form {
+  display: grid;
+  gap: 12px;
+}
+
+.ghost-small-button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  padding: 0 12px;
+  font-weight: 800;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -641,6 +663,14 @@ h2 {
 
   .item-primary span {
     font-size: 15px;
+  }
+
+  .item-actions {
+    justify-content: stretch;
+  }
+
+  .item-actions button {
+    flex: 1;
   }
 
   .audit-row,

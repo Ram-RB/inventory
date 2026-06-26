@@ -13,6 +13,7 @@ let activeViewId = localStorage.getItem(VIEW_STORAGE_KEY) || "inventoryView";
 let selectedPhoto = "";
 let refreshTimer = null;
 let inventorySearchTerm = "";
+let editingItemId = null;
 
 const authPanel = document.querySelector("#authPanel");
 const dashboard = document.querySelector("#dashboard");
@@ -211,25 +212,71 @@ function renderInventory() {
 
   inventoryList.innerHTML = filteredItems
     .map(
-      (item) => `
-        <article class="item-card">
+      (item) => {
+        const isEditing = item.id === editingItemId;
+        const isAdmin = currentUser()?.role === "admin";
+
+        return `
+        <article class="item-card" data-item-id="${item.id}">
           <img src="${item.photo}" alt="${escapeHtml(item.name)} photo" />
-          <div class="item-content">
-            <div class="item-headline">
-              <strong>${escapeHtml(item.name)}</strong>
-              <span class="pill">Qty ${item.quantity}</span>
-            </div>
-            <div class="item-primary">
-              <span><b>SKU</b>${escapeHtml(item.sku)}</span>
-              <span><b>Location</b>${escapeHtml(item.location)}</span>
-            </div>
-            <div class="item-footer">
-              <span>Updated by ${escapeHtml(item.updatedByName)}</span>
-              <span>${formatDate(item.updatedAt)}</span>
-            </div>
-          </div>
+          ${
+            isEditing
+              ? `
+                <form class="item-edit-form" data-edit-form="${item.id}">
+                  <div class="form-row">
+                    <label>
+                      SKU
+                      <input name="sku" value="${escapeHtml(item.sku)}" required />
+                    </label>
+                    <label>
+                      Quantity
+                      <input name="quantity" type="number" min="0" step="1" value="${item.quantity}" required />
+                    </label>
+                  </div>
+                  <label>
+                    Item name
+                    <input name="name" value="${escapeHtml(item.name)}" required />
+                  </label>
+                  <label>
+                    Stored location
+                    <input name="location" value="${escapeHtml(item.location)}" required />
+                  </label>
+                  <div class="item-actions">
+                    <button class="approve-button" type="submit">Save</button>
+                    <button class="ghost-small-button" type="button" data-cancel-edit>Cancel</button>
+                  </div>
+                </form>
+              `
+              : `
+                <div class="item-content">
+                  <div class="item-headline">
+                    <strong>${escapeHtml(item.name)}</strong>
+                    <span class="pill">Qty ${item.quantity}</span>
+                  </div>
+                  <div class="item-primary">
+                    <span><b>SKU</b>${escapeHtml(item.sku)}</span>
+                    <span><b>Location</b>${escapeHtml(item.location)}</span>
+                  </div>
+                  <div class="item-footer">
+                    <span>Updated by ${escapeHtml(item.updatedByName)}</span>
+                    <span>${formatDate(item.updatedAt)}</span>
+                  </div>
+                  ${
+                    isAdmin
+                      ? `
+                        <div class="item-actions">
+                          <button class="ghost-small-button" type="button" data-edit-item="${item.id}">Edit</button>
+                          <button class="danger-button" type="button" data-delete-item="${item.id}">Remove</button>
+                        </div>
+                      `
+                      : ""
+                  }
+                </div>
+              `
+          }
         </article>
-      `,
+      `;
+      },
     )
     .join("");
   renderSuggestions();
@@ -478,6 +525,93 @@ inventorySuggestions.addEventListener("mousedown", (event) => {
 document.addEventListener("click", (event) => {
   if (event.target.closest(".search-box")) return;
   inventorySuggestions.classList.add("hidden");
+});
+
+inventoryList.addEventListener("click", async (event) => {
+  const editButton = event.target.closest("[data-edit-item]");
+  const cancelButton = event.target.closest("[data-cancel-edit]");
+  const deleteButton = event.target.closest("[data-delete-item]");
+
+  if (editButton) {
+    editingItemId = editButton.dataset.editItem;
+    renderInventory();
+    return;
+  }
+
+  if (cancelButton) {
+    editingItemId = null;
+    renderInventory();
+    return;
+  }
+
+  if (!deleteButton) return;
+
+  const itemId = deleteButton.dataset.deleteItem;
+  const item = state.items.find((entry) => entry.id === itemId);
+  if (!item || currentUser()?.role !== "admin") return;
+  if (!window.confirm(`Remove ${item.name} from inventory?`)) return;
+
+  try {
+    setButtonBusy(deleteButton, true, "Removing...");
+    const result = await apiRequest("/api/items", {
+      method: "DELETE",
+      body: JSON.stringify({
+        itemId,
+        adminId: currentUser().id,
+      }),
+    });
+
+    state.items = state.items.filter((entry) => entry.id !== itemId);
+    if (result.audit) {
+      state.audit = [result.audit, ...state.audit.filter((entry) => entry.id !== result.audit.id)];
+    }
+    await refreshState({ silent: true });
+    renderApp();
+    showToast("Inventory item removed.");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setButtonBusy(deleteButton, false);
+  }
+});
+
+inventoryList.addEventListener("submit", async (event) => {
+  const form = event.target.closest("[data-edit-form]");
+  if (!form) return;
+  event.preventDefault();
+
+  const itemId = form.dataset.editForm;
+  const saveButton = form.querySelector('button[type="submit"]');
+
+  try {
+    setButtonBusy(saveButton, true, "Saving...");
+    const result = await apiRequest("/api/items", {
+      method: "PUT",
+      body: JSON.stringify({
+        itemId,
+        adminId: currentUser().id,
+        sku: form.elements.namedItem("sku").value.trim(),
+        name: form.elements.namedItem("name").value.trim(),
+        quantity: Number(form.elements.namedItem("quantity").value),
+        location: form.elements.namedItem("location").value.trim(),
+      }),
+    });
+
+    if (result.item) {
+      state.items = state.items.map((item) => (item.id === result.item.id ? result.item : item));
+    }
+    if (result.audit) {
+      state.audit = [result.audit, ...state.audit.filter((entry) => entry.id !== result.audit.id)];
+    }
+    editingItemId = null;
+    await refreshState({ silent: true });
+    renderApp();
+    showToast("Inventory item updated.");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setButtonBusy(saveButton, false);
+  }
 });
 
 inventoryForm.addEventListener("submit", async (event) => {
