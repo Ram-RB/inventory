@@ -12,6 +12,7 @@ let authMode = "login";
 let activeViewId = localStorage.getItem(VIEW_STORAGE_KEY) || "inventoryView";
 let selectedPhoto = "";
 let refreshTimer = null;
+let inventorySearchTerm = "";
 
 const authPanel = document.querySelector("#authPanel");
 const dashboard = document.querySelector("#dashboard");
@@ -28,6 +29,8 @@ const signOutButton = document.querySelector("#signOutButton");
 const inventoryForm = document.querySelector("#inventoryForm");
 const photoInput = document.querySelector("#photoInput");
 const photoPreview = document.querySelector("#photoPreview");
+const inventorySearchInput = document.querySelector("#inventorySearchInput");
+const inventorySuggestions = document.querySelector("#inventorySuggestions");
 const inventoryList = document.querySelector("#inventoryList");
 const auditList = document.querySelector("#auditList");
 const userList = document.querySelector("#userList");
@@ -188,26 +191,39 @@ function renderApp() {
 }
 
 function renderInventory() {
-  inventoryCount.textContent = `${state.items.length} ${state.items.length === 1 ? "item" : "items"}`;
+  const filteredItems = filterInventoryItems();
+  const hasSearch = Boolean(inventorySearchTerm);
+  inventoryCount.textContent = hasSearch
+    ? `${filteredItems.length} of ${state.items.length} ${state.items.length === 1 ? "item" : "items"}`
+    : `${state.items.length} ${state.items.length === 1 ? "item" : "items"}`;
 
   if (!state.items.length) {
     inventoryList.innerHTML = '<p class="empty-state">No inventory has been added yet.</p>';
+    renderSuggestions();
     return;
   }
 
-  inventoryList.innerHTML = state.items
+  if (!filteredItems.length) {
+    inventoryList.innerHTML = '<p class="empty-state">No inventory matches your search.</p>';
+    renderSuggestions();
+    return;
+  }
+
+  inventoryList.innerHTML = filteredItems
     .map(
       (item) => `
         <article class="item-card">
           <img src="${item.photo}" alt="${escapeHtml(item.name)} photo" />
-          <div>
-            <div class="item-title">
+          <div class="item-content">
+            <div class="item-headline">
               <strong>${escapeHtml(item.name)}</strong>
               <span class="pill">Qty ${item.quantity}</span>
             </div>
-            <div class="item-meta">
-              <span>SKU: ${escapeHtml(item.sku)}</span>
-              <span>Location: ${escapeHtml(item.location)}</span>
+            <div class="item-primary">
+              <span><b>SKU</b>${escapeHtml(item.sku)}</span>
+              <span><b>Location</b>${escapeHtml(item.location)}</span>
+            </div>
+            <div class="item-footer">
               <span>Updated by ${escapeHtml(item.updatedByName)}</span>
               <span>${formatDate(item.updatedAt)}</span>
             </div>
@@ -216,6 +232,63 @@ function renderInventory() {
       `,
     )
     .join("");
+  renderSuggestions();
+}
+
+function filterInventoryItems() {
+  const term = inventorySearchTerm.trim().toLowerCase();
+  if (!term) return state.items;
+
+  return state.items.filter((item) =>
+    [item.name, item.sku, item.location, item.updatedByName]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(term)),
+  );
+}
+
+function getInventorySuggestions() {
+  const term = inventorySearchTerm.trim().toLowerCase();
+  if (!term) return [];
+
+  const suggestions = [];
+  const seen = new Set();
+
+  state.items.forEach((item) => {
+    [
+      { label: item.name, detail: `SKU ${item.sku}` },
+      { label: item.sku, detail: item.name },
+      { label: item.location, detail: "Location" },
+    ].forEach((candidate) => {
+      if (!candidate.label) return;
+      const key = String(candidate.label).toLowerCase();
+      if (seen.has(key) || !key.includes(term)) return;
+      seen.add(key);
+      suggestions.push(candidate);
+    });
+  });
+
+  return suggestions.slice(0, 6);
+}
+
+function renderSuggestions() {
+  const suggestions = getInventorySuggestions();
+  if (!suggestions.length || document.activeElement !== inventorySearchInput) {
+    inventorySuggestions.classList.add("hidden");
+    inventorySuggestions.innerHTML = "";
+    return;
+  }
+
+  inventorySuggestions.innerHTML = suggestions
+    .map(
+      (suggestion) => `
+        <button class="suggestion-option" type="button" data-suggestion="${escapeHtml(suggestion.label)}">
+          <strong>${escapeHtml(suggestion.label)}</strong>
+          <span>${escapeHtml(suggestion.detail)}</span>
+        </button>
+      `,
+    )
+    .join("");
+  inventorySuggestions.classList.remove("hidden");
 }
 
 function renderAudit(isAdmin) {
@@ -376,6 +449,35 @@ photoInput.addEventListener("change", () => {
     photoPreview.innerHTML = `<img src="${selectedPhoto}" alt="Selected inventory item" />`;
   });
   reader.readAsDataURL(file);
+});
+
+inventorySearchInput.addEventListener("input", () => {
+  inventorySearchTerm = inventorySearchInput.value.trim();
+  renderInventory();
+});
+
+inventorySearchInput.addEventListener("focus", renderSuggestions);
+
+inventorySearchInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  inventorySearchTerm = "";
+  inventorySearchInput.value = "";
+  inventorySuggestions.classList.add("hidden");
+  renderInventory();
+});
+
+inventorySuggestions.addEventListener("mousedown", (event) => {
+  const option = event.target.closest("[data-suggestion]");
+  if (!option) return;
+  inventorySearchTerm = option.dataset.suggestion;
+  inventorySearchInput.value = inventorySearchTerm;
+  inventorySuggestions.classList.add("hidden");
+  renderInventory();
+});
+
+document.addEventListener("click", (event) => {
+  if (event.target.closest(".search-box")) return;
+  inventorySuggestions.classList.add("hidden");
 });
 
 inventoryForm.addEventListener("submit", async (event) => {
