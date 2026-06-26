@@ -33,6 +33,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .hidden {
   display: none !important;
 }
@@ -361,14 +366,22 @@ h2 {
   align-items: center;
 }
 
-.approve-button {
+.approve-button,
+.danger-button {
   min-height: 38px;
   border: 0;
   border-radius: 8px;
-  background: var(--accent);
   color: white;
   padding: 0 12px;
   font-weight: 800;
+}
+
+.approve-button {
+  background: var(--accent);
+}
+
+.danger-button {
+  background: #9f2f2f;
 }
 
 .pending {
@@ -399,6 +412,33 @@ h2 {
 
 .toast.show {
   display: block;
+}
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  align-content: center;
+  background: rgba(246, 247, 242, 0.82);
+  color: var(--ink);
+}
+
+.loader {
+  width: 42px;
+  height: 42px;
+  border: 4px solid #cad6ce;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 880px) {
@@ -505,6 +545,10 @@ h2 {
   }
 
   .approve-button {
+    width: 100%;
+  }
+
+  .danger-button {
     width: 100%;
   }
 }

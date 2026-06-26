@@ -5,6 +5,7 @@ let state = {
   audit: [],
 };
 
+const SESSION_STORAGE_KEY = "inventory-control-current-user";
 let authMode = "login";
 let selectedPhoto = "";
 
@@ -29,6 +30,8 @@ const userList = document.querySelector("#userList");
 const inventoryCount = document.querySelector("#inventoryCount");
 const welcomeTitle = document.querySelector("#welcomeTitle");
 const roleLabel = document.querySelector("#roleLabel");
+const loadingOverlay = document.querySelector("#loadingOverlay");
+const loadingText = document.querySelector("#loadingText");
 const toast = document.querySelector("#toast");
 
 function currentUser() {
@@ -46,6 +49,43 @@ function showToast(message) {
   toast.textContent = message;
   toast.classList.add("show");
   window.setTimeout(() => toast.classList.remove("show"), 2600);
+}
+
+function setLoading(isLoading, message = "Loading inventory...") {
+  loadingText.textContent = message;
+  loadingOverlay.classList.toggle("hidden", !isLoading);
+}
+
+function setButtonBusy(button, isBusy, busyText) {
+  if (!button) return;
+  if (isBusy) {
+    button.dataset.originalText = button.textContent;
+    button.textContent = busyText;
+  } else {
+    button.textContent = button.dataset.originalText || button.textContent;
+    delete button.dataset.originalText;
+  }
+  button.disabled = isBusy;
+}
+
+function saveSession(user) {
+  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(user));
+}
+
+function loadSession() {
+  const saved = localStorage.getItem(SESSION_STORAGE_KEY);
+  if (!saved) return null;
+
+  try {
+    return JSON.parse(saved);
+  } catch {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    return null;
+  }
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
 async function apiRequest(path, options = {}) {
@@ -106,8 +146,8 @@ function renderApp() {
   });
 
   renderInventory();
-  renderAudit(isAdmin);
   renderUsers(isAdmin);
+  renderAudit(isAdmin);
   setMobileView("inventoryView");
 }
 
@@ -195,7 +235,7 @@ function renderUsers(isAdmin) {
           </div>
           ${
             user.approved
-              ? '<span class="pill">Active</span>'
+              ? `<button class="danger-button" type="button" data-revoke="${user.id}">Revoke</button>`
               : `<button class="approve-button" type="button" data-approve="${user.id}">Approve</button>`
           }
         </article>
@@ -241,6 +281,7 @@ authForm.addEventListener("submit", async (event) => {
   const password = passwordInput.value;
 
   try {
+    setButtonBusy(authSubmit, true, authMode === "signup" ? "Requesting..." : "Signing in...");
     if (authMode === "signup") {
       if (!name) {
         showToast("Please enter your full name.");
@@ -263,15 +304,21 @@ authForm.addEventListener("submit", async (event) => {
     });
 
     state.currentUser = user;
+    saveSession(user);
+    setLoading(true, "Loading dashboard...");
     await refreshState();
     renderApp();
   } catch (error) {
     showToast(error.message);
+  } finally {
+    setButtonBusy(authSubmit, false);
+    setLoading(false);
   }
 });
 
 signOutButton.addEventListener("click", () => {
   state.currentUser = null;
+  clearSession();
   renderApp();
 });
 
@@ -311,6 +358,8 @@ inventoryForm.addEventListener("submit", async (event) => {
   };
 
   try {
+    const saveButton = inventoryForm.querySelector('button[type="submit"]');
+    setButtonBusy(saveButton, true, "Saving...");
     await apiRequest("/api/items", {
       method: "POST",
       body: JSON.stringify(item),
@@ -324,26 +373,36 @@ inventoryForm.addEventListener("submit", async (event) => {
     showToast("Inventory item saved.");
   } catch (error) {
     showToast(error.message);
+  } finally {
+    const saveButton = inventoryForm.querySelector('button[type="submit"]');
+    setButtonBusy(saveButton, false);
   }
 });
 
 userList.addEventListener("click", async (event) => {
-  const button = event.target.closest("[data-approve]");
+  const button = event.target.closest("[data-approve], [data-revoke]");
   if (!button || !currentUser()) return;
 
+  const approving = Boolean(button.dataset.approve);
+  const userId = button.dataset.approve || button.dataset.revoke;
+
   try {
+    setButtonBusy(button, true, approving ? "Approving..." : "Revoking...");
     await apiRequest("/api/approve-user", {
       method: "POST",
       body: JSON.stringify({
-        userId: button.dataset.approve,
+        userId,
         adminId: currentUser().id,
+        approved: approving,
       }),
     });
     await refreshState();
     renderApp();
-    showToast("User approved.");
+    showToast(approving ? "User approved." : "User access revoked.");
   } catch (error) {
     showToast(error.message);
+  } finally {
+    setButtonBusy(button, false);
   }
 });
 
@@ -351,5 +410,33 @@ document.querySelectorAll(".mobile-tab").forEach((button) => {
   button.addEventListener("click", () => setMobileView(button.dataset.view));
 });
 
-setAuthMode("login");
-renderApp();
+async function initializeApp() {
+  setAuthMode("login");
+  const savedUser = loadSession();
+
+  if (!savedUser) {
+    renderApp();
+    return;
+  }
+
+  state.currentUser = savedUser;
+  setLoading(true, "Restoring your session...");
+
+  try {
+    await refreshState();
+    const freshUser = state.users.find((user) => user.id === savedUser.id);
+    if (!freshUser || !freshUser.approved) {
+      state.currentUser = null;
+      clearSession();
+      showToast("Your account access is no longer active.");
+    } else {
+      state.currentUser = freshUser;
+      saveSession(freshUser);
+    }
+  } finally {
+    setLoading(false);
+    renderApp();
+  }
+}
+
+initializeApp();

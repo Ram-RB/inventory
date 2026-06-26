@@ -5,7 +5,7 @@ module.exports = async function handler(req, res) {
 
   try {
     await initDb();
-    const { userId, adminId } = req.body || {};
+    const { userId, adminId, approved = true } = req.body || {};
 
     const adminResult = await sql`SELECT * FROM users WHERE id = ${adminId} AND role = 'admin' AND approved = TRUE LIMIT 1`;
     const admin = adminResult.rows[0];
@@ -21,8 +21,12 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    await sql`UPDATE users SET approved = TRUE WHERE id = ${userId}`;
-    await addAudit("User approved", `${user.name} (${user.email})`, admin);
+    await sql`UPDATE users SET approved = ${Boolean(approved)} WHERE id = ${userId}`;
+    await addAudit(
+      approved ? "User approved" : "User access revoked",
+      `${user.name} (${user.email})`,
+      admin,
+    );
     sendJson(res, 200, { ok: true });
   } catch (error) {
     sendJson(res, 500, { error: error.message || "Could not approve user." });

@@ -56,8 +56,8 @@
 
         <nav class="mobile-tabs" aria-label="Dashboard sections">
           <button class="mobile-tab active" data-view="inventoryView" type="button">Inventory</button>
-          <button class="mobile-tab" data-view="auditView" type="button">Audit</button>
           <button class="mobile-tab admin-only" data-view="usersView" type="button">Users</button>
+          <button class="mobile-tab" data-view="auditView" type="button">Audit</button>
         </nav>
 
         <div class="content-grid">
@@ -111,6 +111,14 @@
             <div class="inventory-list" id="inventoryList"></div>
           </section>
 
+          <section class="panel admin-panel admin-only" id="usersView">
+            <div class="panel-heading">
+              <h3>User access</h3>
+              <p>Approve or revoke user access at any time.</p>
+            </div>
+            <div class="user-list" id="userList"></div>
+          </section>
+
           <section class="panel admin-panel" id="auditView">
             <div class="panel-heading">
               <h3>Activity audit</h3>
@@ -118,17 +126,14 @@
             </div>
             <div class="audit-list" id="auditList"></div>
           </section>
-
-          <section class="panel admin-panel admin-only" id="usersView">
-            <div class="panel-heading">
-              <h3>User approvals</h3>
-              <p>Approve new users before they can add inventory.</p>
-            </div>
-            <div class="user-list" id="userList"></div>
-          </section>
         </div>
       </section>
     </main>
+
+    <div class="loading-overlay hidden" id="loadingOverlay" role="status" aria-live="polite">
+      <div class="loader"></div>
+      <strong id="loadingText">Loading inventory...</strong>
+    </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
