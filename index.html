@@ -131,6 +131,17 @@
               <h3>Activity audit</h3>
               <p>Every inventory entry with user and timestamp.</p>
             </div>
+            <div class="audit-controls">
+              <label>
+                Sort audit
+                <select id="auditSortSelect">
+                  <option value="timestamp-desc">Newest first</option>
+                  <option value="timestamp-asc">Oldest first</option>
+                  <option value="action-asc">Action A-Z</option>
+                  <option value="user-asc">User A-Z</option>
+                </select>
+              </label>
+            </div>
             <div class="audit-list" id="auditList"></div>
           </section>
         </div>

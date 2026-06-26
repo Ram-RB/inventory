@@ -25,7 +25,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -149,7 +150,8 @@ label {
   font-weight: 700;
 }
 
-input {
+input,
+select {
   width: 100%;
   min-height: 46px;
   border: 1px solid #cfd9d1;
@@ -159,7 +161,8 @@ input {
   color: var(--ink);
 }
 
-input:focus {
+input:focus,
+select:focus {
   border-color: var(--accent);
   outline: 3px solid rgba(23, 107, 84, 0.15);
 }
@@ -296,6 +299,11 @@ h2 {
 
 .search-box {
   position: relative;
+  padding: 14px 14px 0;
+}
+
+.audit-controls {
+  max-width: 260px;
   padding: 14px 14px 0;
 }
 

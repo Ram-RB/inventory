@@ -7,9 +7,11 @@ let state = {
 
 const SESSION_STORAGE_KEY = "inventory-control-current-user";
 const VIEW_STORAGE_KEY = "inventory-control-active-view";
+const AUDIT_SORT_STORAGE_KEY = "inventory-control-audit-sort";
 const REFRESH_INTERVAL_MS = 5000;
 let authMode = "login";
 let activeViewId = localStorage.getItem(VIEW_STORAGE_KEY) || "inventoryView";
+let auditSortMode = localStorage.getItem(AUDIT_SORT_STORAGE_KEY) || "timestamp-desc";
 let selectedPhoto = "";
 let refreshTimer = null;
 let inventorySearchTerm = "";
@@ -34,6 +36,7 @@ const inventorySearchInput = document.querySelector("#inventorySearchInput");
 const inventorySuggestions = document.querySelector("#inventorySuggestions");
 const inventoryList = document.querySelector("#inventoryList");
 const auditList = document.querySelector("#auditList");
+const auditSortSelect = document.querySelector("#auditSortSelect");
 const userList = document.querySelector("#userList");
 const inventoryCount = document.querySelector("#inventoryCount");
 const welcomeTitle = document.querySelector("#welcomeTitle");
@@ -136,17 +139,11 @@ function startRealtimeRefresh() {
     if (!loaded) return;
 
     const freshUser = state.users.find((user) => user.id === currentUser().id);
-    if (!freshUser || !freshUser.approved) {
-      state.currentUser = null;
-      clearSession();
-      stopRealtimeRefresh();
-      showToast("Your account access is no longer active.");
-      renderApp();
-      return;
+    if (freshUser) {
+      state.currentUser = freshUser;
+      saveSession(freshUser);
     }
 
-    state.currentUser = freshUser;
-    saveSession(freshUser);
     renderApp();
   }, REFRESH_INTERVAL_MS);
 }
@@ -344,12 +341,14 @@ function renderAudit(isAdmin) {
     return;
   }
 
-  if (!state.audit.length) {
+  const sortedAudit = getSortedAudit();
+
+  if (!sortedAudit.length) {
     auditList.innerHTML = '<p class="empty-state">No activity has been recorded yet.</p>';
     return;
   }
 
-  auditList.innerHTML = state.audit
+  auditList.innerHTML = sortedAudit
     .map(
       (entry) => `
         <article class="audit-row">
@@ -365,6 +364,24 @@ function renderAudit(isAdmin) {
       `,
     )
     .join("");
+}
+
+function getSortedAudit() {
+  return [...state.audit].sort((first, second) => {
+    if (auditSortMode === "timestamp-asc") {
+      return new Date(first.timestamp) - new Date(second.timestamp);
+    }
+
+    if (auditSortMode === "action-asc") {
+      return first.action.localeCompare(second.action);
+    }
+
+    if (auditSortMode === "user-asc") {
+      return first.userName.localeCompare(second.userName);
+    }
+
+    return new Date(second.timestamp) - new Date(first.timestamp);
+  });
 }
 
 function renderUsers(isAdmin) {
@@ -703,6 +720,13 @@ document.querySelectorAll(".mobile-tab").forEach((button) => {
   button.addEventListener("click", () => setMobileView(button.dataset.view));
 });
 
+auditSortSelect.value = auditSortMode;
+auditSortSelect.addEventListener("change", () => {
+  auditSortMode = auditSortSelect.value;
+  localStorage.setItem(AUDIT_SORT_STORAGE_KEY, auditSortMode);
+  renderAudit(currentUser()?.role === "admin");
+});
+
 async function initializeApp() {
   setAuthMode("login");
   const savedUser = loadSession();
@@ -719,14 +743,9 @@ async function initializeApp() {
     const loaded = await refreshState();
     if (loaded) {
       const freshUser = state.users.find((user) => user.id === savedUser.id);
-      if (!freshUser || !freshUser.approved) {
-        state.currentUser = null;
-        clearSession();
-        showToast("Your account access is no longer active.");
-      } else {
+      if (freshUser) {
         state.currentUser = freshUser;
         saveSession(freshUser);
-        startRealtimeRefresh();
       }
     }
   } finally {
