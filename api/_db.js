@@ -58,11 +58,14 @@ async function initDb() {
       quantity INTEGER NOT NULL,
       photo TEXT NOT NULL,
       location TEXT NOT NULL,
+      notes TEXT NOT NULL DEFAULT '',
       updated_by_id TEXT NOT NULL REFERENCES users(id),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+
+  await sql`ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS notes TEXT NOT NULL DEFAULT ''`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS audit_entries (

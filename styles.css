@@ -38,6 +38,7 @@ body {
 
 button,
 input,
+textarea,
 select {
   font: inherit;
 }
@@ -214,6 +215,7 @@ label {
 }
 
 input,
+textarea,
 select {
   width: 100%;
   min-height: 34px;
@@ -226,11 +228,17 @@ select {
   outline: none;
 }
 
+textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+
 input::placeholder {
   color: var(--text-3);
 }
 
 input:focus,
+textarea:focus,
 select:focus {
   border-color: var(--text);
 }
@@ -547,6 +555,15 @@ h2 {
   font-weight: 500;
   letter-spacing: -0.04em;
   text-transform: uppercase;
+}
+
+.item-notes {
+  border-left: 1px solid var(--divider);
+  color: var(--text-2);
+  padding-left: 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
 }
 
 .item-footer {

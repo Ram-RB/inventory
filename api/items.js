@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (!requireMethod(req, res, "POST")) return;
-    const { sku, name, quantity, photo, location, updatedById } = req.body || {};
+    const { sku, name, quantity, photo, location, notes = "", updatedById } = req.body || {};
 
     if (!sku || !name || quantity === undefined || !photo || !location || !updatedById) {
       sendJson(res, 400, { error: "All inventory fields are required." });
@@ -31,12 +31,16 @@ module.exports = async function handler(req, res) {
     }
 
     const inserted = await sql`
-      INSERT INTO inventory_items (id, sku, name, quantity, photo, location, updated_by_id)
-      VALUES (${crypto.randomUUID()}, ${sku}, ${name}, ${Number(quantity)}, ${photo}, ${location}, ${updatedById})
+      INSERT INTO inventory_items (id, sku, name, quantity, photo, location, notes, updated_by_id)
+      VALUES (${crypto.randomUUID()}, ${sku}, ${name}, ${Number(quantity)}, ${photo}, ${location}, ${String(notes)}, ${updatedById})
       RETURNING *
     `;
 
-    const audit = await addAudit("Inventory item added", `${name} (${sku}), quantity ${quantity}, location ${location}`, user);
+    const audit = await addAudit(
+      "Inventory item added",
+      `${name} (${sku}), quantity ${quantity}, location ${location}${notes ? ", notes added" : ""}`,
+      user,
+    );
     const item = inserted.rows[0];
     sendJson(res, 201, {
       ok: true,
@@ -47,6 +51,7 @@ module.exports = async function handler(req, res) {
         quantity: item.quantity,
         photo: item.photo,
         location: item.location,
+        notes: item.notes || "",
         updatedById: item.updated_by_id,
         updatedByName: user.name,
         updatedAt: item.updated_at,
@@ -72,6 +77,7 @@ function publicItem(item, updatedByName) {
     quantity: item.quantity,
     photo: item.photo,
     location: item.location,
+    notes: item.notes || "",
     updatedById: item.updated_by_id,
     updatedByName,
     updatedAt: item.updated_at,
@@ -80,7 +86,7 @@ function publicItem(item, updatedByName) {
 }
 
 async function updateItem(req, res) {
-  const { itemId, adminId, sku, name, quantity, location } = req.body || {};
+  const { itemId, adminId, sku, name, quantity, location, notes = "" } = req.body || {};
 
   if (!itemId || !adminId || !sku || !name || quantity === undefined || !location) {
     sendJson(res, 400, { error: "Item, admin, SKU, name, quantity, and location are required." });
@@ -106,13 +112,18 @@ async function updateItem(req, res) {
         name = ${name},
         quantity = ${Number(quantity)},
         location = ${location},
+        notes = ${String(notes)},
         updated_by_id = ${adminId},
         updated_at = NOW()
     WHERE id = ${itemId}
     RETURNING *
   `;
 
-  const audit = await addAudit("Inventory item updated", `${name} (${sku}), quantity ${quantity}, location ${location}`, admin);
+  const audit = await addAudit(
+    "Inventory item updated",
+    `${name} (${sku}), quantity ${quantity}, location ${location}${notes ? ", notes updated" : ""}`,
+    admin,
+  );
   sendJson(res, 200, {
     ok: true,
     item: publicItem(updated.rows[0], admin.name),

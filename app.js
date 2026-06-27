@@ -241,6 +241,10 @@ function renderInventory() {
                     Stored location
                     <input name="location" value="${escapeHtml(item.location)}" required />
                   </label>
+                  <label>
+                    Notes
+                    <textarea name="notes" rows="3">${escapeHtml(item.notes || "")}</textarea>
+                  </label>
                   <div class="item-actions">
                     <button class="approve-button" type="submit">Save</button>
                     <button class="ghost-small-button" type="button" data-cancel-edit>Cancel</button>
@@ -257,6 +261,7 @@ function renderInventory() {
                     <span><b>SKU</b>${escapeHtml(item.sku)}</span>
                     <span><b>Location</b>${escapeHtml(item.location)}</span>
                   </div>
+                  ${item.notes ? `<p class="item-notes">${escapeHtml(item.notes)}</p>` : ""}
                   <div class="item-footer">
                     <span>Updated by ${escapeHtml(item.updatedByName)}</span>
                     <span>${formatDate(item.updatedAt)}</span>
@@ -287,7 +292,7 @@ function filterInventoryItems() {
   if (!term) return state.items;
 
   return state.items.filter((item) =>
-    [item.name, item.sku, item.location, item.updatedByName]
+    [item.name, item.sku, item.location, item.notes, item.updatedByName]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(term)),
   );
@@ -305,6 +310,7 @@ function getInventorySuggestions() {
       { label: item.name, detail: `SKU ${item.sku}` },
       { label: item.sku, detail: item.name },
       { label: item.location, detail: "Location" },
+      { label: item.notes, detail: "Notes" },
     ].forEach((candidate) => {
       if (!candidate.label) return;
       const key = String(candidate.label).toLowerCase();
@@ -710,6 +716,7 @@ inventoryList.addEventListener("submit", async (event) => {
         name: form.elements.namedItem("name").value.trim(),
         quantity: Number(form.elements.namedItem("quantity").value),
         location: form.elements.namedItem("location").value.trim(),
+        notes: form.elements.namedItem("notes").value.trim(),
       }),
     });
 
@@ -746,6 +753,7 @@ inventoryForm.addEventListener("submit", async (event) => {
     quantity: Number(document.querySelector("#quantityInput").value),
     photo: selectedPhoto,
     location: document.querySelector("#locationInput").value.trim(),
+    notes: document.querySelector("#notesInput").value.trim(),
     updatedById: user.id,
   };
 
